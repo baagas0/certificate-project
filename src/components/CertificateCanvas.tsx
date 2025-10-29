@@ -106,7 +106,7 @@ export default function CertificateCanvas({ pageNumber, isEditing = true }: Cert
   if (!template) return <div>No template loaded</div>;
   if (!currentPage) return <div>Page {pageNumber} not found</div>;
 
-    return (
+  return (
     <div className="w-full bg-white border-2 border-gray-300 rounded-lg overflow-hidden" style={getCanvasStyle()}>
       <div
         className="p-4 h-full overflow-auto bg-gray-50 relative"

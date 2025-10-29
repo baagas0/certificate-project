@@ -25,11 +25,35 @@ export async function POST(request: NextRequest) {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
 
-    // Generate PDF
-    const pdf = await page.pdf({
+    // Check if first page has background image for custom page dimensions
+    const firstPage = template.pages[0];
+    let pdfOptions: any = {
       format: 'A4',
       margin: { top: 0, right: 0, bottom: 0, left: 0 },
-    });
+      printBackground: true,
+    };
+
+    // If there's a background image, use custom dimensions
+    if (firstPage?.backgroundImage) {
+      // Use standard high-quality dimensions that match most certificate templates
+      const pageWidth = 800;
+      const pageHeight = 600;
+
+      pdfOptions = {
+        width: `${pageWidth}px`,
+        height: `${pageHeight}px`,
+        margin: { top: 0, right: 0, bottom: 0, left: 0 },
+        printBackground: true,
+        scale: 1.0,
+      };
+
+      // Add dimensions to first page for HTML generation
+      (firstPage as any).pageWidth = pageWidth;
+      (firstPage as any).pageHeight = pageHeight;
+    }
+
+    // Generate PDF
+    const pdf = await page.pdf(pdfOptions);
 
     await browser.close();
 
@@ -59,22 +83,34 @@ function generateCertificateHTML(template: CertificateTemplate, dynamicData: Dyn
               ? String(dynamicData[component.dataKey])
               : component.content;
 
-          const gridColsValue = template.gridCols || 12;
-          const gridRowsValue = template.gridRows || 12;
-          const cellWidth = (100 / gridColsValue).toFixed(2);
-          const cellHeight = (297 / gridRowsValue).toFixed(2); // A4 height in mm
+          // Support both free positioning and grid positioning
+          let left, top, width, height;
 
-          const left = (component.layout.x * parseFloat(cellWidth)).toFixed(2);
-          const top = (component.layout.y * parseFloat(cellHeight)).toFixed(2);
-          const width = (component.layout.w * parseFloat(cellWidth)).toFixed(2);
-          const height = (component.layout.h * parseFloat(cellHeight)).toFixed(2);
+          if (component.layout.positionMode === 'free') {
+            // Use pixel-based positioning directly for custom PDF size
+            left = `${component.layout.left || 50}px`;
+            top = `${component.layout.top || 50}px`;
+            width = `${component.layout.width || 150}px`;
+            height = `${component.layout.height || 50}px`;
+          } else {
+            // Fallback to grid positioning
+            const gridColsValue = template.gridCols || 12;
+            const gridRowsValue = template.gridRows || 12;
+            const cellWidth = (100 / gridColsValue).toFixed(2);
+            const cellHeight = (297 / gridRowsValue).toFixed(2); // A4 height in mm
+
+            left = (component.layout.x * parseFloat(cellWidth)).toFixed(2);
+            top = (component.layout.y * parseFloat(cellHeight)).toFixed(2);
+            width = (component.layout.w * parseFloat(cellWidth)).toFixed(2);
+            height = (component.layout.h * parseFloat(cellHeight)).toFixed(2);
+          }
 
           const baseStyle = `
             position: absolute;
-            left: ${left}%;
-            top: ${top}mm;
-            width: ${width}%;
-            height: ${height}mm;
+            left: ${component.layout.positionMode === 'free' ? left : `${left}%`};
+            top: ${component.layout.positionMode === 'free' ? top : `${top}mm`};
+            width: ${component.layout.positionMode === 'free' ? width : `${width}%`};
+            height: ${component.layout.positionMode === 'free' ? height : `${height}mm`};
             font-size: ${component.fontSize || 14}px;
             font-family: ${component.fontFamily || 'Arial'};
             color: ${component.color || '#000000'};
@@ -87,6 +123,8 @@ function generateCertificateHTML(template: CertificateTemplate, dynamicData: Dyn
             padding: 8px;
             overflow: hidden;
             word-wrap: break-word;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 4px;
           `;
 
           let componentHTML = '';
@@ -131,19 +169,23 @@ function generateCertificateHTML(template: CertificateTemplate, dynamicData: Dyn
         .join('');
 
       const backgroundStyle = page.backgroundImage
-        ? `background-image: url('${page.backgroundImage}'); background-size: cover; background-position: center;`
+        ? `background-image: url('${page.backgroundImage}'); background-size: cover; background-position: center; background-repeat: no-repeat;`
         : 'background-color: #ffffff;';
 
-      return `
-        <div style="
+      const pageWidth = page.backgroundImage ? 800 : 794; // 794px = 210mm at 96 DPI
+    const pageHeight = page.backgroundImage ? 600 : 1123; // 1123px = 297mm at 96 DPI
+
+    return `
+        <div class="page" style="
           position: relative;
-          width: 210mm;
-          height: 297mm;
+          width: ${pageWidth}px;
+          height: ${pageHeight}px;
           margin: 0;
           padding: 0;
           ${backgroundStyle}
           page-break-after: always;
           box-sizing: border-box;
+          overflow: hidden;
         ">
           ${componentsHTML}
         </div>

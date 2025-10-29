@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     await browser.close();
 
     // Return PDF
-    return new NextResponse(pdf, {
+    return new NextResponse(pdf as any, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${template.templateName}.pdf"`,

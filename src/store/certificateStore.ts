@@ -56,6 +56,7 @@ interface CertificateStore {
   setCurrentPage: (pageNumber: number) => void;
   addPage: () => void;
   removePage: (pageNumber: number) => void;
+  updatePageBackgroundImage: (pageNumber: number, backgroundImage: string | undefined) => void;
 
   // Data actions
   setDynamicData: (data: DynamicData) => void;
@@ -212,6 +213,17 @@ export const useCertificateStore = create<CertificateStore>((set) => ({
       if (!state.template) return state;
       const updatedTemplate = { ...state.template };
       updatedTemplate.pages = updatedTemplate.pages.filter((p) => p.pageNumber !== pageNumber);
+      return { template: updatedTemplate };
+    }),
+
+  updatePageBackgroundImage: (pageNumber, backgroundImage) =>
+    set((state) => {
+      if (!state.template) return state;
+      const updatedTemplate = { ...state.template };
+      const page = updatedTemplate.pages.find((p) => p.pageNumber === pageNumber);
+      if (page) {
+        page.backgroundImage = backgroundImage;
+      }
       return { template: updatedTemplate };
     }),
 

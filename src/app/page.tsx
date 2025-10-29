@@ -6,6 +6,7 @@ import CertificateCanvas from '@/components/CertificateCanvas';
 import ComponentLibrary from '@/components/ComponentLibrary';
 import ComponentPropertiesPanel from '@/components/ComponentPropertiesPanel';
 import DynamicDataPanel from '@/components/DynamicDataPanel';
+import PagePropertiesPanel from '@/components/PagePropertiesPanel';
 
 export default function Home() {
   const template = useCertificateStore((state) => state.template);
@@ -16,7 +17,7 @@ export default function Home() {
   const dynamicData = useCertificateStore((state) => state.dynamicData);
 
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [activeTab, setActiveTab] = useState<'edit' | 'data'>('edit');
+  const [activeTab, setActiveTab] = useState<'edit' | 'data' | 'page'>('edit');
 
   const handleGeneratePDF = async () => {
     if (!template) return;
@@ -85,12 +86,12 @@ export default function Home() {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - Component Library or Data Panel */}
+        {/* Left Sidebar - Component Library, Data Panel, or Page Properties */}
         <div className="w-64 bg-white shadow-md overflow-hidden flex flex-col">
           <div className="flex border-b border-gray-300">
             <button
               onClick={() => setActiveTab('edit')}
-              className={`flex-1 px-4 py-2 font-medium transition ${
+              className={`flex-1 px-2 py-2 font-medium transition text-xs ${
                 activeTab === 'edit'
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -100,7 +101,7 @@ export default function Home() {
             </button>
             <button
               onClick={() => setActiveTab('data')}
-              className={`flex-1 px-4 py-2 font-medium transition ${
+              className={`flex-1 px-2 py-2 font-medium transition text-xs ${
                 activeTab === 'data'
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -108,12 +109,24 @@ export default function Home() {
             >
               Data
             </button>
+            <button
+              onClick={() => setActiveTab('page')}
+              className={`flex-1 px-2 py-2 font-medium transition text-xs ${
+                activeTab === 'page'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Halaman
+            </button>
           </div>
           <div className="flex-1 overflow-hidden">
             {activeTab === 'edit' ? (
               <ComponentLibrary pageNumber={currentPage} />
-            ) : (
+            ) : activeTab === 'data' ? (
               <DynamicDataPanel />
+            ) : (
+              <PagePropertiesPanel pageNumber={currentPage} />
             )}
           </div>
         </div>

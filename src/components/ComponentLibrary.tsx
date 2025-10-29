@@ -20,7 +20,11 @@ export default function ComponentLibrary({ pageNumber }: ComponentLibraryProps) 
         type: 'text' as const,
         label: 'Teks Baru',
         content: 'Teks Baru',
-        layout: { x: 0, y: 0, w: 4, h: 1 },
+        layout: {
+          x: 0, y: 0, w: 4, h: 1,
+          left: 50, top: 50, width: 200, height: 40,
+          positionMode: 'free' as const
+        },
         fontSize: 16,
         fontFamily: 'Arial',
         color: '#000000',
@@ -36,7 +40,11 @@ export default function ComponentLibrary({ pageNumber }: ComponentLibraryProps) 
         type: 'signature' as const,
         label: 'Tanda Tangan',
         content: 'Penandatangan',
-        layout: { x: 0, y: 0, w: 3, h: 2 },
+        layout: {
+          x: 0, y: 0, w: 3, h: 2,
+          left: 50, top: 100, width: 150, height: 80,
+          positionMode: 'free' as const
+        },
       },
     },
     {
@@ -48,7 +56,11 @@ export default function ComponentLibrary({ pageNumber }: ComponentLibraryProps) 
         type: 'date' as const,
         label: 'Tanggal',
         content: new Date().toLocaleDateString('id-ID'),
-        layout: { x: 0, y: 0, w: 3, h: 1 },
+        layout: {
+          x: 0, y: 0, w: 3, h: 1,
+          left: 50, top: 150, width: 150, height: 40,
+          positionMode: 'free' as const
+        },
         fontSize: 12,
         alignment: 'center' as const,
       },
@@ -62,7 +74,11 @@ export default function ComponentLibrary({ pageNumber }: ComponentLibraryProps) 
         type: 'image' as const,
         label: 'Gambar',
         content: 'https://via.placeholder.com/150',
-        layout: { x: 0, y: 0, w: 3, h: 3 },
+        layout: {
+          x: 0, y: 0, w: 3, h: 3,
+          left: 50, top: 200, width: 150, height: 150,
+          positionMode: 'free' as const
+        },
       },
     },
     {
@@ -74,7 +90,11 @@ export default function ComponentLibrary({ pageNumber }: ComponentLibraryProps) 
         type: 'qrcode' as const,
         label: 'QR Code',
         content: 'https://example.com',
-        layout: { x: 0, y: 0, w: 2, h: 2 },
+        layout: {
+          x: 0, y: 0, w: 2, h: 2,
+          left: 50, top: 250, width: 100, height: 100,
+          positionMode: 'free' as const
+        },
       },
     },
   ];

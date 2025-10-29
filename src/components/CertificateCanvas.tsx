@@ -1,11 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import GridLayout, { Layout } from 'react-grid-layout';
 import { useCertificateStore, CertificateComponent, ComponentLayout } from '@/store/certificateStore';
 import CertificateComponentRenderer from './CertificateComponentRenderer';
-import 'react-grid-layout/css/styles.css';
-import 'react-resizable/css/styles.css';
 
 interface CertificateCanvasProps {
   pageNumber: number;
@@ -109,21 +106,7 @@ export default function CertificateCanvas({ pageNumber, isEditing = true }: Cert
   if (!template) return <div>No template loaded</div>;
   if (!currentPage) return <div>Page {pageNumber} not found</div>;
 
-  const gridCols = template.gridCols || 12;
-  const gridRows = template.gridRows || 12;
-
-  // Convert components to GridLayout format
-  const layouts: Layout[] = currentPage.components.map((comp) => ({
-    i: comp.id,
-    x: comp.layout.x,
-    y: comp.layout.y,
-    w: comp.layout.w,
-    h: comp.layout.h,
-    static: !isEditing,
-  }));
-
-  
-  return (
+    return (
     <div className="w-full bg-white border-2 border-gray-300 rounded-lg overflow-hidden" style={getCanvasStyle()}>
       <div
         className="p-4 h-full overflow-auto bg-gray-50 relative"
@@ -149,72 +132,8 @@ export default function CertificateCanvas({ pageNumber, isEditing = true }: Cert
           </>
         )}
 
-        {/* Grid Layout for grid-based components */}
-        <GridLayout
-          className={`layout ${backgroundImage && backgroundImageLoaded ? 'bg-transparent' : 'bg-white'}`}
-          layout={layouts.filter(layout => {
-            const component = currentPage.components.find(c => c.id === layout.i);
-            return !component || component.layout.positionMode !== 'free';
-          })}
-          onLayoutChange={(newLayout) => {
-            newLayout.forEach((item) => {
-              const component = currentPage.components.find((c) => c.id === item.i);
-              if (component && component.layout.positionMode !== 'free') {
-                const newLayout: ComponentLayout = {
-                  x: item.x,
-                  y: item.y,
-                  w: item.w,
-                  h: item.h,
-                };
-                updateComponentLayout(pageNumber, item.i, newLayout);
-              }
-            });
-          }}
-          cols={gridCols}
-          rowHeight={30}
-          width={750}
-          isDraggable={isEditing}
-          isResizable={isEditing}
-          compactType="vertical"
-          preventCollision={false}
-          useCSSTransforms={true}
-          style={{ zIndex: 1, position: 'relative' }}
-        >
-          {currentPage.components.filter(component => component.layout.positionMode !== 'free').map((component) => (
-            <div
-              key={component.id}
-              className={`border-2 cursor-pointer transition-all ${
-                backgroundImage && backgroundImageLoaded
-                  ? 'bg-white bg-opacity-90'
-                  : 'bg-white'
-              } ${
-                selectedComponentId === component.id ? 'border-blue-500 shadow-lg' : 'border-gray-200 hover:border-gray-400'
-              }`}
-              onClick={() => setSelectedComponent(component.id)}
-            >
-              <CertificateComponentRenderer
-                component={component}
-                dynamicData={dynamicData}
-                isSelected={selectedComponentId === component.id}
-              />
-              {isEditing && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    togglePositionMode(component.id);
-                  }}
-                  className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-1 py-0.5 rounded-bl hover:bg-blue-600"
-                  style={{ zIndex: 10 }}
-                >
-                  Free
-                </button>
-              )}
-            </div>
-          ))}
-        </GridLayout>
-
-        {/* Free positioned components */}
-        {currentPage.components.filter(component => component.layout.positionMode === 'free').map((component) => (
+        {/* All components using free positioning */}
+        {currentPage.components.map((component) => (
           <div
             key={component.id}
             className={`absolute border-2 cursor-move transition-all ${
@@ -227,8 +146,8 @@ export default function CertificateCanvas({ pageNumber, isEditing = true }: Cert
               draggingComponent === component.id ? 'cursor-grabbing' : 'cursor-grab'
             }`}
             style={{
-              left: `${component.layout.left || 0}px`,
-              top: `${component.layout.top || 0}px`,
+              left: `${component.layout.left || 50}px`,
+              top: `${component.layout.top || 50}px`,
               width: `${component.layout.width || 150}px`,
               height: `${component.layout.height || 50}px`,
               zIndex: selectedComponentId === component.id ? 10 : 2,
@@ -247,10 +166,10 @@ export default function CertificateCanvas({ pageNumber, isEditing = true }: Cert
                   e.stopPropagation();
                   togglePositionMode(component.id);
                 }}
-                className="absolute top-0 right-0 bg-green-500 text-white text-xs px-1 py-0.5 rounded-bl hover:bg-green-600"
+                className="absolute top-0 right-0 bg-purple-500 text-white text-xs px-1 py-0.5 rounded-bl hover:bg-purple-600"
                 style={{ zIndex: 10 }}
               >
-                Grid
+                Free
               </button>
             )}
           </div>

@@ -5,6 +5,13 @@ export interface ComponentLayout {
   y: number;
   w: number;
   h: number;
+  // Free positioning properties (in pixels)
+  left?: number;
+  top?: number;
+  width?: number;
+  height?: number;
+  // Positioning mode
+  positionMode?: 'grid' | 'free';
 }
 
 export interface CertificateComponent {
@@ -51,6 +58,8 @@ interface CertificateStore {
   updateComponent: (pageNumber: number, componentId: string, updates: Partial<CertificateComponent>) => void;
   addComponent: (pageNumber: number, component: CertificateComponent) => void;
   removeComponent: (pageNumber: number, componentId: string) => void;
+  updateComponentPosition: (pageNumber: number, componentId: string, position: { left?: number; top?: number; width?: number; height?: number }) => void;
+  toggleComponentPositionMode: (pageNumber: number, componentId: string) => void;
 
   // Page actions
   setCurrentPage: (pageNumber: number) => void;
@@ -80,7 +89,11 @@ const defaultTemplate: CertificateTemplate = {
           type: 'text',
           label: 'Judul',
           content: 'SERTIFIKAT PENGHARGAAN',
-          layout: { x: 1, y: 1, w: 10, h: 1 },
+          layout: {
+            x: 1, y: 1, w: 10, h: 1,
+            left: 100, top: 80, width: 550, height: 60,
+            positionMode: 'free'
+          },
           fontSize: 32,
           fontFamily: 'Arial',
           color: '#000000',
@@ -92,7 +105,11 @@ const defaultTemplate: CertificateTemplate = {
           label: 'Nama Peserta',
           content: 'Nama Peserta',
           dataKey: 'participantName',
-          layout: { x: 2, y: 4, w: 8, h: 1 },
+          layout: {
+            x: 2, y: 4, w: 8, h: 1,
+            left: 150, top: 200, width: 450, height: 50,
+            positionMode: 'free'
+          },
           fontSize: 24,
           fontFamily: 'Arial',
           color: '#000000',
@@ -103,7 +120,11 @@ const defaultTemplate: CertificateTemplate = {
           type: 'text',
           label: 'Deskripsi',
           content: 'Telah menyelesaikan program pelatihan dengan sukses',
-          layout: { x: 1, y: 6, w: 10, h: 1 },
+          layout: {
+            x: 1, y: 6, w: 10, h: 1,
+            left: 100, top: 300, width: 550, height: 40,
+            positionMode: 'free'
+          },
           fontSize: 14,
           fontFamily: 'Arial',
           color: '#333333',
@@ -114,7 +135,11 @@ const defaultTemplate: CertificateTemplate = {
           type: 'signature',
           label: 'Tanda Tangan Direktur',
           content: 'Direktur',
-          layout: { x: 2, y: 9, w: 3, h: 2 },
+          layout: {
+            x: 2, y: 9, w: 3, h: 2,
+            left: 150, top: 450, width: 200, height: 80,
+            positionMode: 'free'
+          },
         },
         {
           id: 'date-1',
@@ -122,7 +147,11 @@ const defaultTemplate: CertificateTemplate = {
           label: 'Tanggal',
           content: new Date().toLocaleDateString('id-ID'),
           dataKey: 'certificateDate',
-          layout: { x: 7, y: 9, w: 3, h: 1 },
+          layout: {
+            x: 7, y: 9, w: 3, h: 1,
+            left: 450, top: 480, width: 200, height: 40,
+            positionMode: 'free'
+          },
           fontSize: 12,
           alignment: 'center',
         },
@@ -190,6 +219,52 @@ export const useCertificateStore = create<CertificateStore>((set) => ({
       const page = updatedTemplate.pages.find((p) => p.pageNumber === pageNumber);
       if (page) {
         page.components = page.components.filter((c) => c.id !== componentId);
+      }
+      return { template: updatedTemplate };
+    }),
+
+  updateComponentPosition: (pageNumber, componentId, position) =>
+    set((state) => {
+      if (!state.template) return state;
+      const updatedTemplate = { ...state.template };
+      const page = updatedTemplate.pages.find((p) => p.pageNumber === pageNumber);
+      if (page) {
+        const component = page.components.find((c) => c.id === componentId);
+        if (component) {
+          component.layout = {
+            ...component.layout,
+            ...position,
+            positionMode: 'free',
+          };
+        }
+      }
+      return { template: updatedTemplate };
+    }),
+
+  toggleComponentPositionMode: (pageNumber, componentId) =>
+    set((state) => {
+      if (!state.template) return state;
+      const updatedTemplate = { ...state.template };
+      const page = updatedTemplate.pages.find((p) => p.pageNumber === pageNumber);
+      if (page) {
+        const component = page.components.find((c) => c.id === componentId);
+        if (component) {
+          const currentMode = component.layout.positionMode || 'grid';
+          component.layout.positionMode = currentMode === 'grid' ? 'free' : 'grid';
+
+          // Initialize free positioning properties if switching to free mode
+          if (component.layout.positionMode === 'free') {
+            const gridCols = state.template?.gridCols || 12;
+            const gridRows = state.template?.gridRows || 12;
+            const canvasWidth = 750; // Default canvas width
+            const canvasHeight = (750 / (gridCols / gridRows)); // Calculate height based on aspect ratio
+
+            component.layout.left = (component.layout.x / gridCols) * canvasWidth;
+            component.layout.top = (component.layout.y / gridRows) * canvasHeight;
+            component.layout.width = (component.layout.w / gridCols) * canvasWidth;
+            component.layout.height = (component.layout.h / gridRows) * canvasHeight;
+          }
+        }
       }
       return { template: updatedTemplate };
     }),

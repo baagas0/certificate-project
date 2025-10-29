@@ -17,20 +17,72 @@ export default function CertificateCanvas({ pageNumber, isEditing = true }: Cert
   const dynamicData = useCertificateStore((state) => state.dynamicData);
   const selectedComponentId = useCertificateStore((state) => state.selectedComponentId);
   const updateComponentLayout = useCertificateStore((state) => state.updateComponentLayout);
+  const updateComponentPosition = useCertificateStore((state) => state.updateComponentPosition);
+  const toggleComponentPositionMode = useCertificateStore((state) => state.toggleComponentPositionMode);
   const setSelectedComponent = useCertificateStore((state) => state.setSelectedComponent);
   const [backgroundImageLoaded, setBackgroundImageLoaded] = useState(false);
   const [backgroundImageError, setBackgroundImageError] = useState(false);
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+  const [draggingComponent, setDraggingComponent] = useState<string | null>(null);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [componentStart, setComponentStart] = useState({ left: 0, top: 0 });
 
   const currentPage = template?.pages.find((p) => p.pageNumber === pageNumber);
   const backgroundImage = currentPage?.backgroundImage;
 
   // Reset background image states when page changes
   useEffect(() => {
-    setBackgroundImageLoaded(false);
-    setBackgroundImageError(false);
-    setImageDimensions({ width: 0, height: 0 });
+    const timer = setTimeout(() => {
+      setBackgroundImageLoaded(false);
+      setBackgroundImageError(false);
+      setImageDimensions({ width: 0, height: 0 });
+    }, 0);
+    return () => clearTimeout(timer);
   }, [backgroundImage]);
+
+  // Drag and drop handlers for free positioning
+  const handleMouseDown = (e: React.MouseEvent, componentId: string) => {
+    if (!isEditing) return;
+
+    const component = currentPage?.components.find(c => c.id === componentId);
+    if (!component || component.layout.positionMode !== 'free') return;
+
+    e.preventDefault();
+    setDraggingComponent(componentId);
+    setDragStart({ x: e.clientX, y: e.clientY });
+    setComponentStart({
+      left: component.layout.left || 0,
+      top: component.layout.top || 0
+    });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!draggingComponent || !isEditing) return;
+
+    const deltaX = e.clientX - dragStart.x;
+    const deltaY = e.clientY - dragStart.y;
+
+    const newLeft = Math.max(0, componentStart.left + deltaX);
+    const newTop = Math.max(0, componentStart.top + deltaY);
+
+    updateComponentPosition(pageNumber, draggingComponent, {
+      left: newLeft,
+      top: newTop,
+    });
+  };
+
+  const handleMouseUp = () => {
+    setDraggingComponent(null);
+  };
+
+  const togglePositionMode = (componentId: string) => {
+    toggleComponentPositionMode(pageNumber, componentId);
+    // Force a re-render by updating a dummy state
+    setTimeout(() => {
+      setSelectedComponent(null);
+      setTimeout(() => setSelectedComponent(componentId), 10);
+    }, 100);
+  };
 
   const handleBackgroundImageLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
     const img = event.currentTarget;
@@ -70,24 +122,15 @@ export default function CertificateCanvas({ pageNumber, isEditing = true }: Cert
     static: !isEditing,
   }));
 
-  const handleLayoutChange = (newLayout: Layout[]) => {
-    newLayout.forEach((item) => {
-      const component = currentPage.components.find((c) => c.id === item.i);
-      if (component) {
-        const newLayout: ComponentLayout = {
-          x: item.x,
-          y: item.y,
-          w: item.w,
-          h: item.h,
-        };
-        updateComponentLayout(pageNumber, item.i, newLayout);
-      }
-    });
-  };
-
+  
   return (
     <div className="w-full bg-white border-2 border-gray-300 rounded-lg overflow-hidden" style={getCanvasStyle()}>
-      <div className="p-4 h-full overflow-auto bg-gray-50 relative">
+      <div
+        className="p-4 h-full overflow-auto bg-gray-50 relative"
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
         {backgroundImage && (
           <>
             <img
@@ -105,10 +148,28 @@ export default function CertificateCanvas({ pageNumber, isEditing = true }: Cert
             )}
           </>
         )}
+
+        {/* Grid Layout for grid-based components */}
         <GridLayout
           className={`layout ${backgroundImage && backgroundImageLoaded ? 'bg-transparent' : 'bg-white'}`}
-          layout={layouts}
-          onLayoutChange={handleLayoutChange}
+          layout={layouts.filter(layout => {
+            const component = currentPage.components.find(c => c.id === layout.i);
+            return !component || component.layout.positionMode !== 'free';
+          })}
+          onLayoutChange={(newLayout) => {
+            newLayout.forEach((item) => {
+              const component = currentPage.components.find((c) => c.id === item.i);
+              if (component && component.layout.positionMode !== 'free') {
+                const newLayout: ComponentLayout = {
+                  x: item.x,
+                  y: item.y,
+                  w: item.w,
+                  h: item.h,
+                };
+                updateComponentLayout(pageNumber, item.i, newLayout);
+              }
+            });
+          }}
           cols={gridCols}
           rowHeight={30}
           width={750}
@@ -119,7 +180,7 @@ export default function CertificateCanvas({ pageNumber, isEditing = true }: Cert
           useCSSTransforms={true}
           style={{ zIndex: 1, position: 'relative' }}
         >
-          {currentPage.components.map((component) => (
+          {currentPage.components.filter(component => component.layout.positionMode !== 'free').map((component) => (
             <div
               key={component.id}
               className={`border-2 cursor-pointer transition-all ${
@@ -136,9 +197,64 @@ export default function CertificateCanvas({ pageNumber, isEditing = true }: Cert
                 dynamicData={dynamicData}
                 isSelected={selectedComponentId === component.id}
               />
+              {isEditing && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePositionMode(component.id);
+                  }}
+                  className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-1 py-0.5 rounded-bl hover:bg-blue-600"
+                  style={{ zIndex: 10 }}
+                >
+                  Free
+                </button>
+              )}
             </div>
           ))}
         </GridLayout>
+
+        {/* Free positioned components */}
+        {currentPage.components.filter(component => component.layout.positionMode === 'free').map((component) => (
+          <div
+            key={component.id}
+            className={`absolute border-2 cursor-move transition-all ${
+              backgroundImage && backgroundImageLoaded
+                ? 'bg-white bg-opacity-90'
+                : 'bg-white'
+            } ${
+              selectedComponentId === component.id ? 'border-blue-500 shadow-lg' : 'border-gray-200 hover:border-gray-400'
+            } ${
+              draggingComponent === component.id ? 'cursor-grabbing' : 'cursor-grab'
+            }`}
+            style={{
+              left: `${component.layout.left || 0}px`,
+              top: `${component.layout.top || 0}px`,
+              width: `${component.layout.width || 150}px`,
+              height: `${component.layout.height || 50}px`,
+              zIndex: selectedComponentId === component.id ? 10 : 2,
+            }}
+            onMouseDown={(e) => handleMouseDown(e, component.id)}
+            onClick={() => setSelectedComponent(component.id)}
+          >
+            <CertificateComponentRenderer
+              component={component}
+              dynamicData={dynamicData}
+              isSelected={selectedComponentId === component.id}
+            />
+            {isEditing && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePositionMode(component.id);
+                }}
+                className="absolute top-0 right-0 bg-green-500 text-white text-xs px-1 py-0.5 rounded-bl hover:bg-green-600"
+                style={{ zIndex: 10 }}
+              >
+                Grid
+              </button>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
